@@ -1,0 +1,10 @@
+review_id,product_id,rating
+R1,P001,5
+R2,P001,4
+R3,P002,1
+R4,P002,3
+R5,P003,2
+R6,P005,3
+R7,P006,0
+R8,P006,6
+R9,P006,

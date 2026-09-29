@@ -1,0 +1,11 @@
+{% extends 'base.html' %}{% block content %}
+<h2>Add a product</h2><form method="post" action="/products" class="row">
+<input type="hidden" name="csrf" value="{{session.csrf}}">
+<label>Name<input name="name" maxlength="100" required></label><label>Price<input name="price" type="number" min="0" max="99999999.99" step="0.01" required></label><button>Create product</button></form>
+<h2>Products ({{products|length}})</h2>
+{% for p in products %}<section><h3>Product #{{p.id}}</h3><div class="row"><form method="post" action="/products/{{p.id}}/update" class="row">
+<input type="hidden" name="csrf" value="{{session.csrf}}"><label>Name<input name="name" value="{{p.name}}" maxlength="100" required></label><label>Price<input name="price" type="number" value="{{p.price}}" min="0" max="99999999.99" step="0.01" required></label><button>Update</button></form>
+<form method="post" action="/products/{{p.id}}/delete"><input type="hidden" name="csrf" value="{{session.csrf}}"><button>Delete #{{p.id}}</button></form></div></section>
+{% else %}<p>No products yet. Add one above to begin.</p>{% endfor %}
+<hr><form method="post" action="/logout"><input type="hidden" name="csrf" value="{{session.csrf}}"><button>Sign out</button></form>
+{% endblock %}

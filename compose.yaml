@@ -1,0 +1,91 @@
+name: cloud-lab-kit
+services:
+  bigdata:
+    image: cloud-lab-bigdata:1.0
+    build:
+      context: .
+      dockerfile: docker/bigdata/Dockerfile
+    hostname: bigdata
+    profiles: [bigdata]
+    init: true
+    mem_limit: 4g
+    ports:
+      - "127.0.0.1:9870:9870"
+      - "127.0.0.1:8088:8088"
+      - "127.0.0.1:19888:19888"
+    volumes:
+      - ./labs:/workspace/labs
+      - ./artifacts:/workspace/artifacts
+      - hdfs:/data
+    healthcheck:
+      test: [CMD-SHELL, "test -f /tmp/lab-ready && hdfs dfs -test -d /user/lab"]
+      interval: 20s
+      timeout: 15s
+      retries: 12
+      start_period: 30s
+  cloudsim:
+    image: cloud-lab-cloudsim:1.0
+    build:
+      context: .
+      dockerfile: docker/cloudsim/Dockerfile
+    profiles: [simulation]
+    mem_limit: 1g
+    volumes:
+      - ./labs:/workspace/labs
+      - ./artifacts:/workspace/artifacts
+  hive:
+    image: apache/hive:4.2.1
+    profiles: [hive]
+    hostname: hive
+    mem_limit: 3g
+    environment:
+      SERVICE_NAME: hiveserver2
+      HIVE_SERVER2_THRIFT_PORT: "10000"
+      JAVA_TOOL_OPTIONS: "--enable-preview --enable-native-access=ALL-UNNAMED"
+    ports:
+      - "127.0.0.1:10000:10000"
+      - "127.0.0.1:10002:10002"
+    volumes:
+      - ./labs/06-hive:/workspace:ro
+    healthcheck:
+      test: [CMD-SHELL, "bash /workspace/beeline.sh -u jdbc:hive2://localhost:10000/default -n hive --silent=true -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 25s
+      retries: 12
+      start_period: 60s
+  db:
+    image: postgres:18.1-bookworm
+    profiles: [web]
+    environment:
+      POSTGRES_DB: lab
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: local-practice-only
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U lab -d lab"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  web:
+    image: cloud-lab-web:1.0
+    build: ./labs/01-02-cloud-app
+    profiles: [web]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://lab:local-practice-only@db:5432/lab}
+      APP_PASSWORD: ${APP_PASSWORD:-practice-only-change-me}
+      SECRET_KEY: ${SECRET_KEY:-local-practice-session-key-change-on-cloud}
+      COOKIE_SECURE: "false"
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+volumes:
+  hdfs:
+  postgres:
